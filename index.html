@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manga Reader - Home</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Roboto', sans-serif;
+            background-color: #fff;
+        }
+
+        .sidebar {
+            transition: transform 0.3s ease-in-out;
+            background-color: #f8f8f8;
+            z-index: 50;
+        }
+
+        .sidebar-hidden {
+            transform: translateX(-100%);
+        }
+
+        .manga-page {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+            background-color: #000;
+            transition: transform 0.2s;
+        }
+
+        .manga-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .manga-card:hover {
+            transform: scale(1.03);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+            color: #fff;
+            transition: background-color 0.2s;
+        }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        #mangaViewer {
+            display: none;
+        }
+
+        #mangaViewer.active {
+            display: block;
+        }
+
+        #mangaUpdates {
+            display: block;
+        }
+
+        #mangaUpdates.hidden {
+            display: none;
+        }
+
+        .search-icon {
+            background-image: url('https://cdn.pixabay.com/photo/2017/01/13/01/22/magnifying-glass-1976105_1280.png');
+            background-size: cover;
+            width: 24px;
+            height: 24px;
+        }
+
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #007bff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+            display: none;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .page-indicator {
+            position: absolute;
+            bottom: 1rem;
+            right: 1rem;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            pointer-events: none;
+        }
+
+        @media (max-width: 640px) {
+            .reader-controls {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            
+            .reader-controls > * {
+                width: 100%;
+            }
+            
+            .reader-controls .btn-group {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                gap: 0.25rem;
+            }
+        }
+    </style>
+</head>
+
+<body class="flex flex-col min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-sm p-4 flex justify-between items-center sticky top-0 z-40">
+        <div class="flex items-center space-x-4">
+            <a href="index.html" aria-label="Home">
+                <img src="https://t4.ftcdn.net/jpg/03/03/25/95/360_F_303259500_YRo4yGlHJ57sPVIHyE9bg5I1Plw3miuB.jpg"
+                    alt="Manga Reader Logo" class="h-8">
+            </a>
+            <div class="flex items-center space-x-2">
+                <div class="search-icon" aria-hidden="true"></div>
+                <input type="text" id="searchBar" placeholder="Search manga..."
+                    class="border border-gray-300 rounded-md p-1.5 w-48 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    aria-label="Search manga">
+            </div>
+        </div>
+        <div class="flex items-center space-x-4">
+            <select class="border border-gray-300 rounded-md p-1.5 text-sm hidden md:block" aria-label="Language selector">
+                <option>English</option>
+                <option>Español</option>
+                <option>日本語</option>
+            </select>
+            <a href="login.html" class="text-sm text-blue-600 hover:underline">Log in</a>
+            <a href="signup.html" class="text-sm text-blue-600 hover:underline">Sign up</a>
+            <a href="favorites.html" class="text-sm text-blue-600 hover:underline">Favorites</a>
+            <a href="about.html" class="text-sm text-blue-600 hover:underline">About</a>
+            <button id="toggleSidebar" class="md:hidden text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded p-1" aria-label="Toggle sidebar menu">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path>
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="flex flex-1 relative">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="sidebar w-64 p-4 absolute inset-y-0 left-0 md:static md:translate-x-0 sidebar-hidden shadow-lg md:shadow-none" aria-label="Manga list sidebar">
+            <h2 class="text-lg font-semibold mb-4 text-gray-800">Titles</h2>
+            <ul id="mangaList" class="space-y-2"></ul>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 p-4 md:p-6">
+            <!-- Manga Updates Section -->
+            <section id="mangaUpdates" class="max-w-7xl mx-auto">
+                <h2 class="text-xl font-bold mb-4 text-gray-800">Latest Updates</h2>
+                
+                <!-- Loading Skeleton -->
+                <div id="loadingSkeleton" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 hidden">
+                    <div class="skeleton rounded-lg h-64"></div>
+                    <div class="skeleton rounded-lg h-64"></div>
+                    <div class="skeleton rounded-lg h-64"></div>
+                    <div class="skeleton rounded-lg h-64"></div>
+                </div>
+                
+                <!-- Manga Grid -->
+                <div id="mangaGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"></div>
+            </section>
+
+            <!-- Manga Viewer Section -->
+            <section id="mangaViewer" class="max-w-3xl mx-auto">
+                <div class="reader-controls flex flex-col sm:flex-row justify-between items-center mb-4 gap-2">
+                    <button id="backToUpdates" class="btn-primary px-4 py-2 rounded-md w-full sm:w-auto" aria-label="Back to manga list">← Back</button>
+                    <select id="chapterSelect" class="border border-gray-300 rounded-md p-2 text-sm w-full sm:w-auto" aria-label="Select chapter"></select>
+                    <div class="btn-group flex flex-wrap justify-center gap-1 w-full sm:w-auto">
+                        <button id="zoomIn" class="btn-primary px-3 py-2 rounded-md text-sm" aria-label="Zoom in" title="Zoom in">+</button>
+                        <button id="zoomOut" class="btn-primary px-3 py-2 rounded-md text-sm" aria-label="Zoom out" title="Zoom out">−</button>
+                        <button id="fullScreen" class="btn-primary px-3 py-2 rounded-md text-sm" aria-label="Toggle fullscreen" title="Full screen">⛶</button>
+                        <button id="prevPage" class="btn-primary px-3 py-2 rounded-md text-sm" aria-label="Previous page" title="Previous page (←)" disabled>←</button>
+                        <button id="nextPage" class="btn-primary px-3 py-2 rounded-md text-sm" aria-label="Next page" title="Next page (→)" disabled>→</button>
+                    </div>
+                </div>
+                <div class="text-center bg-black relative min-h-[400px] flex items-center justify-center">
+                    <div id="loader" class="loader"></div>
+                    <img id="mangaImage" src="" alt="Manga Page" class="manga-page" style="display: none;">
+                    <div id="pageIndicator" class="page-indicator hidden">Page 1/1</div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white text-center p-4 text-sm">
+      
+        <div class="mt-2 flex justify-center space-x-4">
+            <a href="#" class="text-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-white rounded">Terms of Use</a>
+            <a href="#" class="text-gray-400 hover:text-white focus:outline-none focus:ring-2 focus:ring-white rounded">Privacy Policy</a>
+        </div>
+    </footer>
+
+    <script src="data.js"></script>
+    <script>
+        // State management
+        let currentManga = 0;
+        let currentChapter = 0;
+        let currentPage = 0;
+        let zoomLevel = 1;
+        
+        // Load favorites and reading progress from localStorage
+        let favorites = JSON.parse(localStorage.getItem('favorites')) || [];
+        let readingProgress = JSON.parse(localStorage.getItem('readingProgress')) || {};
+
+        // DOM Elements
+        const mangaList = document.getElementById('mangaList');
+        const mangaGrid = document.getElementById('mangaGrid');
+        const chapterSelect = document.getElementById('chapterSelect');
+        const mangaImage = document.getElementById('mangaImage');
+        const prevPageBtn = document.getElementById('prevPage');
+        const nextPageBtn = document.getElementById('nextPage');
+        const backToUpdatesBtn = document.getElementById('backToUpdates');
+        const toggleSidebarBtn = document.getElementById('toggleSidebar');
+        const sidebar = document.getElementById('sidebar');
+        const mangaUpdates = document.getElementById('mangaUpdates');
+        const mangaViewer = document.getElementById('mangaViewer');
+        const searchBar = document.getElementById('searchBar');
+        const zoomInBtn = document.getElementById('zoomIn');
+        const zoomOutBtn = document.getElementById('zoomOut');
+        const fullScreenBtn = document.getElementById('fullScreen');
+        const loader = document.getElementById('loader');
+        const loadingSkeleton = document.getElementById('loadingSkeleton');
+        const pageIndicator = document.getElementById('pageIndicator');
+
+        // Save reading progress
+        function saveProgress() {
+            const mangaTitle = mangaData[currentManga].title;
+            readingProgress[mangaTitle] = { 
+                chapterIndex: currentChapter, 
+                pageIndex: currentPage,
+                timestamp: Date.now()
+            };
+            localStorage.setItem('readingProgress', JSON.stringify(readingProgress));
+        }
+
+        // Load reading progress
+        function loadProgress(mangaIndex) {
+            const mangaTitle = mangaData[mangaIndex].title;
+            return readingProgress[mangaTitle] || { chapterIndex: 0, pageIndex: 0 };
+        }
+
+        // Preload next page for smoother navigation
+        function preloadNextPage() {
+            if (currentPage < mangaData[currentManga].chapters[currentChapter].pages.length - 1) {
+                const img = new Image();
+                img.src = mangaData[currentManga].chapters[currentChapter].pages[currentPage + 1];
+            }
+        }
+
+        // Populate manga titles and updates
+        function populateManga(filter = '') {
+            // Show skeleton loader
+            loadingSkeleton.classList.remove('hidden');
+            mangaGrid.innerHTML = '';
+            mangaList.innerHTML = '';
+
+            // Simulate loading delay
+            setTimeout(() => {
+                mangaList.innerHTML = '';
+                mangaGrid.innerHTML = '';
+                
+                const filteredManga = mangaData.filter(manga => 
+                    manga.title.toLowerCase().includes(filter.toLowerCase())
+                );
+
+                filteredManga.forEach((manga, index) => {
+                    const originalIndex = mangaData.indexOf(manga);
+                    
+                    // Sidebar manga list
+                    const li = document.createElement('li');
+                    li.innerHTML = `<a href="details.html?manga=${originalIndex}" class="text-blue-600 hover:underline text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 rounded block p-1">${manga.title}</a>`;
+                    mangaList.appendChild(li);
+
+                    // Manga updates grid
+                    const card = document.createElement('div');
+                    card.className = 'manga-card bg-white rounded-lg overflow-hidden';
+                    card.innerHTML = `
+                        <img loading="lazy" src="${manga.cover}" alt="${manga.title}" class="w-full h-48 object-cover">
+                        <div class="p-3">
+                            <h3 class="text-sm font-semibold text-gray-800 truncate">${manga.title}</h3>
+                            <p class="text-xs text-gray-600">Latest: ${manga.chapters[0].name}</p>
+                            <div class="mt-2 flex space-x-2">
+                                <button class="btn-primary w-full text-sm px-3 py-1.5 rounded-md read-manga" data-manga="${originalIndex}" aria-label="Read ${manga.title}">Read Free</button>
+                                <button class="btn-primary w-12 text-sm px-3 py-1.5 rounded-md favorite-btn" data-manga="${originalIndex}" aria-label="${favorites.includes(manga.title) ? 'Remove from' : 'Add to'} favorites">
+                                    ${favorites.includes(manga.title) ? '★' : '☆'}
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    mangaGrid.appendChild(card);
+                });
+
+                // Show empty state if no results
+                if (filteredManga.length === 0) {
+                    mangaGrid.innerHTML = `
+                        <div class="col-span-full text-center py-12">
+                            <p class="text-gray-500 text-lg">No manga found matching "${filter}"</p>
+                        </div>
+                    `;
+                }
+
+                loadingSkeleton.classList.add('hidden');
+            }, 500); // Simulate network delay
+        }
+
+        // Populate chapters for selected manga
+        function populateChapters(mangaIndex) {
+            chapterSelect.innerHTML = '';
+            mangaData[mangaIndex].chapters.forEach((chapter, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = chapter.name;
+                chapterSelect.appendChild(option);
+            });
+        }
+
+        // Load manga page
+        function loadPage(mangaIndex, chapterIndex, pageIndex) {
+            currentManga = mangaIndex;
+            currentChapter = chapterIndex;
+            currentPage = pageIndex;
+            
+            loader.style.display = 'block';
+            mangaImage.style.display = 'none';
+            pageIndicator.classList.add('hidden');
+            
+            const totalPages = mangaData[mangaIndex].chapters[chapterIndex].pages.length;
+            const img = new Image();
+            img.src = mangaData[mangaIndex].chapters[chapterIndex].pages[pageIndex];
+            
+            img.onload = () => {
+                mangaImage.src = img.src;
+                mangaImage.style.transform = `scale(${zoomLevel})`;
+                loader.style.display = 'none';
+                mangaImage.style.display = 'block';
+                pageIndicator.textContent = `Page ${pageIndex + 1}/${totalPages}`;
+                pageIndicator.classList.remove('hidden');
+                
+                // Save progress
+                saveProgress();
+                
+                // Preload next page
+                preloadNextPage();
+            };
+            
+            img.onerror = () => {
+                loader.style.display = 'none';
+                mangaImage.style.display = 'block';
+                mangaImage.src = 'https://via.placeholder.com/800x1200?text=Image+Not+Found';
+                pageIndicator.classList.remove('hidden');
+            };
+            
+            chapterSelect.value = chapterIndex;
+            prevPageBtn.disabled = pageIndex === 0;
+            nextPageBtn.disabled = pageIndex === totalPages - 1;
+            
+            mangaUpdates.classList.add('hidden');
+            mangaViewer.classList.add('active');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Handle URL parameters
+        function handleUrlParams() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const mangaParam = urlParams.get('manga');
+            const chapterParam = urlParams.get('chapter');
+            const searchParam = urlParams.get('search');
+            
+            if (searchParam) {
+                searchBar.value = searchParam;
+                populateManga(searchParam);
+            }
+            
+            if (mangaParam !== null) {
+                const mangaIndex = parseInt(mangaParam);
+                if (!isNaN(mangaIndex) && mangaIndex >= 0 && mangaIndex < mangaData.length) {
+                    const progress = loadProgress(mangaIndex);
+                    const chapterIndex = chapterParam ? parseInt(chapterParam) : progress.chapterIndex;
+                    populateChapters(mangaIndex);
+                    loadPage(mangaIndex, chapterIndex, progress.pageIndex);
+                }
+            }
+        }
+
+        // Event listeners
+        searchBar.addEventListener('input', (e) => {
+            const searchTerm = e.target.value;
+            // Update URL without reload
+            const url = new URL(window.location);
+            if (searchTerm) {
+                url.searchParams.set('search', searchTerm);
+            } else {
+                url.searchParams.delete('search');
+            }
+            window.history.replaceState({}, '', url);
+            populateManga(searchTerm);
+        });
+
+        mangaGrid.addEventListener('click', (e) => {
+            if (e.target.classList.contains('read-manga')) {
+                const mangaIndex = parseInt(e.target.dataset.manga);
+                const progress = loadProgress(mangaIndex);
+                populateChapters(mangaIndex);
+                loadPage(mangaIndex, progress.chapterIndex, progress.pageIndex);
+            } else if (e.target.classList.contains('favorite-btn')) {
+                const mangaIndex = parseInt(e.target.dataset.manga);
+                const title = mangaData[mangaIndex].title;
+                
+                if (favorites.includes(title)) {
+                    favorites = favorites.filter(t => t !== title);
+                    e.target.textContent = '☆';
+                } else {
+                    favorites.push(title);
+                    e.target.textContent = '★';
+                }
+                
+                localStorage.setItem('favorites', JSON.stringify(favorites));
+                
+                // Dispatch custom event for cross-page sync
+                window.dispatchEvent(new CustomEvent('favoritesUpdated', { detail: favorites }));
+            }
+        });
+
+        chapterSelect.addEventListener('change', (e) => {
+            loadPage(currentManga, parseInt(e.target.value), 0);
+        });
+
+        prevPageBtn.addEventListener('click', () => {
+            if (currentPage > 0) {
+                loadPage(currentManga, currentChapter, currentPage - 1);
+            }
+        });
+
+        nextPageBtn.addEventListener('click', () => {
+            const maxPage = mangaData[currentManga].chapters[currentChapter].pages.length - 1;
+            if (currentPage < maxPage) {
+                loadPage(currentManga, currentChapter, currentPage + 1);
+            }
+        });
+
+        backToUpdatesBtn.addEventListener('click', () => {
+            mangaViewer.classList.remove('active');
+            mangaUpdates.classList.remove('hidden');
+            // Remove manga params from URL
+            const url = new URL(window.location);
+            url.searchParams.delete('manga');
+            url.searchParams.delete('chapter');
+            window.history.replaceState({}, '', url);
+        });
+
+        toggleSidebarBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('sidebar-hidden');
+        });
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', (e) => {
+            if (window.innerWidth < 768) {
+                if (!sidebar.contains(e.target) && !toggleSidebarBtn.contains(e.target)) {
+                    sidebar.classList.add('sidebar-hidden');
+                }
+            }
+        });
+
+        zoomInBtn.addEventListener('click', () => {
+            zoomLevel = Math.min(zoomLevel + 0.25, 3);
+            mangaImage.style.transform = `scale(${zoomLevel})`;
+        });
+
+        zoomOutBtn.addEventListener('click', () => {
+            zoomLevel = Math.max(zoomLevel - 0.25, 0.5);
+            mangaImage.style.transform = `scale(${zoomLevel})`;
+        });
+
+        fullScreenBtn.addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                mangaViewer.requestFullscreen().catch(err => console.error(err));
+            } else {
+                document.exitFullscreen();
+            }
+        });
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (!mangaViewer.classList.contains('active')) return;
+            
+            if (e.key === 'ArrowLeft' && !prevPageBtn.disabled) {
+                e.preventDefault();
+                prevPageBtn.click();
+            } else if (e.key === 'ArrowRight' && !nextPageBtn.disabled) {
+                e.preventDefault();
+                nextPageBtn.click();
+            } else if (e.key === 'Escape') {
+                if (document.fullscreenElement) {
+                    document.exitFullscreen();
+                }
+            }
+        });
+
+        // Listen for favorite updates from other pages
+        window.addEventListener('favoritesUpdated', (e) => {
+            favorites = e.detail;
+            // Refresh current view
+            if (!mangaViewer.classList.contains('active')) {
+                populateManga(searchBar.value);
+            }
+        });
+
+        // Responsive image handling
+        window.addEventListener('resize', () => {
+            mangaImage.style.maxWidth = window.innerWidth < 768 ? '100%' : '800px';
+        });
+
+        // Initialize
+        populateManga();
+        handleUrlParams();
+        mangaViewer.classList.remove('active');
+        mangaUpdates.classList.remove('hidden');
+
+        // Click handler for chapter links from details page
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('chapter-link')) {
+                e.preventDefault();
+                const href = e.target.getAttribute('href');
+                const urlParams = new URLSearchParams(href.split('?')[1]);
+                const mangaIndex = parseInt(urlParams.get('manga'));
+                const chapterIndex = parseInt(urlParams.get('chapter'));
+                
+                if (!isNaN(mangaIndex) && !isNaN(chapterIndex)) {
+                    populateChapters(mangaIndex);
+                    loadPage(mangaIndex, chapterIndex, 0);
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>
