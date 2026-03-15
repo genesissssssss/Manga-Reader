@@ -1,8 +1,7 @@
 
 # 📖 Manga Reader
 
-Welcome to **Manga Reader**, a sleek and modern web-based manga reading platform inspired by **Manga Plus**. Designed with responsiveness and user experience in mind, this project offers a clean and intuitive interface for reading your favorite manga titles. Built with **Tailwind CSS** and the **Roboto** font, it includes essential features like a search bar, chapter navigation, favorites, and user authentication forms.
-
+Modern web-based manga reading platform inspired by **Manga Plus**. Designed with responsiveness and user experience in mind, this project offers a clean and intuitive interface for reading your favorite manga titles
 
 ## 🌟 Features
 
